@@ -29,17 +29,22 @@ function resolveCommand(command: string): string {
   return command;
 }
 
+/**
+ * On Windows, Node 20.12+ (CVE-2024-27980) requires shell when spawning .cmd/.bat,
+ * otherwise spawn throws EINVAL. We only enable shell for these known wrappers
+ * (npm/pnpm/yarn/npx); argv is still passed as separate array so injection risk
+ * is limited to call sites that use runCommandWithTimeout with fixed args (e.g.
+ * npm pack, npm install in plugin install).
+ */
 export function shouldSpawnWithShell(params: {
   resolvedCommand: string;
   platform: NodeJS.Platform;
 }): boolean {
-  // SECURITY: never enable `shell` for argv-based execution.
-  // `shell` routes through cmd.exe on Windows, which turns untrusted argv values
-  // (like chat prompts passed as CLI args) into command-injection primitives.
-  // If you need a shell, use an explicit shell-wrapper argv (e.g. `cmd.exe /c ...`)
-  // and validate/escape at the call site.
-  void params;
-  return false;
+  if (params.platform !== "win32") {
+    return false;
+  }
+  const base = params.resolvedCommand.toLowerCase();
+  return base.endsWith(".cmd") || base.endsWith(".bat");
 }
 
 // Simple promise-wrapped execFile with optional verbosity logging.

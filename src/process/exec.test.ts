@@ -48,12 +48,18 @@ function waitForLine(
 }
 
 describe("runCommandWithTimeout", () => {
-  it("never enables shell execution (Windows cmd.exe injection hardening)", () => {
+  it("enables shell on Windows only for .cmd/.bat (avoids spawn EINVAL per Node CVE-2024-27980)", () => {
     expect(
-      shouldSpawnWithShell({
-        resolvedCommand: "npm.cmd",
-        platform: "win32",
-      }),
+      shouldSpawnWithShell({ resolvedCommand: "npm.cmd", platform: "win32" }),
+    ).toBe(true);
+    expect(
+      shouldSpawnWithShell({ resolvedCommand: "pnpm.cmd", platform: "win32" }),
+    ).toBe(true);
+    expect(
+      shouldSpawnWithShell({ resolvedCommand: "node", platform: "win32" }),
+    ).toBe(false);
+    expect(
+      shouldSpawnWithShell({ resolvedCommand: "npm", platform: "darwin" }),
     ).toBe(false);
   });
 
